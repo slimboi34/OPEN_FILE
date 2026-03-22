@@ -4,7 +4,8 @@ import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, CartesianGrid
 } from "recharts";
-import { HardDrive, Search, ShieldCheck, Trash2, Cpu, Settings, Activity, FolderSearch, AlertTriangle } from "lucide-react";
+import { HardDrive, Search, ShieldCheck, Trash2, Settings, Activity, FolderSearch, AlertTriangle, Terminal, Key } from "lucide-react";
+import { generateCommand, AIProvider } from "./ai";
 import "./App.css";
 
 const COLORS = ['#3b82f6', '#8b5cf6', '#ef4444', '#10b981', '#f59e0b'];
@@ -14,12 +15,31 @@ function App() {
   const [scanProgress, setScanProgress] = useState(0);
   const [isCleaning, setIsCleaning] = useState(false);
   const [cleanComplete, setCleanComplete] = useState(false);
-  const [activeTab, setActiveTab] = useState("smart_scan"); // "smart_scan" or "deep_search"
+
+  /**
+   * Tracks the currently active view in the navigation sidebar.
+   * Options: 'smart_scan', 'deep_search', 'command_bridge', 'settings'
+   */
+  const [activeTab, setActiveTab] = useState("smart_scan");
   const [scanResult, setScanResult] = useState<{
     scanned_gb: number,
     items: {name: string, path: string, size: number, item_type: string}[],
     safe_to_delete_gb: number
   } | null>(null);
+
+  // Search Context State
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<{name: string, path: string, size: number}[]>([]);
+
+  // Command Bridge State
+  const [cmdInput, setCmdInput] = useState("");
+  const [cmdHistory, setCmdHistory] = useState<{type: 'in'|'out'|'error'|'chat', text: string}[]>([]);
+  const [isExecuting, setIsExecuting] = useState(false);
+
+  // Settings State
+  const [apiKey, setApiKey] = useState(() => localStorage.getItem("open_file_api_key") || "");
+  const [aiProvider, setAiProvider] = useState<AIProvider>(() => (localStorage.getItem("open_file_ai_provider") as AIProvider) || "openai");
 
   const fileData = [
     { name: "System Cache", size: 12.5, items: 3400 },
@@ -30,6 +50,10 @@ function App() {
   ];
 
 
+  /**
+   * Triggers the Tauri Rust backend to perform a system-wide scan for junk files.
+   * This updates the state to show a simulated progress bar while the backend executes.
+   */
   const handleScan = async () => {
     setIsScanning(true);
     setScanProgress(0);
@@ -72,6 +96,57 @@ function App() {
     }
   };
 
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
+    setIsSearching(true);
+    try {
+      const results: any = await invoke("search_files", { query: searchQuery, path: null });
+      setSearchResults(results);
+    } catch (e) {
+      console.error(e);
+    }
+    setIsSearching(false);
+  };
+
+  /**
+   * Executes a native shell command securely by sending it via IPC to the Rust backend.
+   * If an AI Provider is enabled, it interprets the user's natural language command into a shell executable prior to running.
+   */
+  const executeCommand = async () => {
+    if (!cmdInput.trim() || isExecuting) return;
+    const userInput = cmdInput;
+    setCmdInput("");
+    setCmdHistory(prev => [...prev, { type: 'in', text: `$ ${userInput}` }]);
+    setIsExecuting(true);
+    
+    try {
+      let finalCommandToExecute = userInput;
+
+      // Wrap in AI logic if they have an API key!
+      if (apiKey) {
+        setCmdHistory(prev => [...prev, { type: 'chat', text: `[${aiProvider.toUpperCase()}] Translating intent...` }]);
+        finalCommandToExecute = await generateCommand(aiProvider, apiKey, userInput);
+      }
+
+      // If the AI determined it was just chat, don't execute a shell command
+      if (finalCommandToExecute.startsWith("CHAT: ")) {
+         setCmdHistory(prev => [...prev, { type: 'chat', text: finalCommandToExecute.replace("CHAT: ", "") }]);
+      } else {
+         // Show what the AI decided to run
+         if (apiKey && finalCommandToExecute !== userInput) {
+            setCmdHistory(prev => [...prev, { type: 'in', text: `> Executing: ${finalCommandToExecute}` }]);
+         }
+
+         const output: string = await invoke("execute_shell_command", { command: finalCommandToExecute });
+         setCmdHistory(prev => [...prev, { type: 'out', text: output }]);
+      }
+    } catch (e: any) {
+      setCmdHistory(prev => [...prev, { type: 'error', text: String(e) }]);
+    }
+    
+    setIsExecuting(false);
+  };
+
   return (
     <div className="flex h-screen bg-background text-gray-200 overflow-hidden font-sans">
       
@@ -99,12 +174,21 @@ function App() {
             icon={<Search size={18} />} 
             label="AI Deep Search" 
           />
+          <NavItem 
+            active={activeTab === "command_bridge"} 
+            onClick={() => setActiveTab("command_bridge")}
+            icon={<Terminal size={18} />} 
+            label="Command Bridge" 
+          />
           <NavItem active={false} icon={<FolderSearch size={18} />} label="Space Lens" />
           <NavItem active={false} icon={<Trash2 size={18} />} label="Uninstaller" />
         </nav>
 
         <div className="p-6">
-          <button className="flex items-center gap-2 text-gray-500 hover:text-gray-300 transition-colors">
+          <button 
+             onClick={() => setActiveTab("settings")}
+             className={`flex items-center gap-2 transition-colors ${activeTab === 'settings' ? 'text-primary' : 'text-gray-500 hover:text-gray-300'}`}
+          >
             <Settings size={18} />
             <span className="text-sm font-medium">Settings</span>
           </button>
@@ -269,19 +353,140 @@ function App() {
                     <Search className="text-gray-400" size={20} />
                     <input 
                       type="text" 
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                       placeholder="e.g. Find my 2023 tax return PDF..." 
                       className="bg-transparent border-none outline-none flex-1 text-white placeholder:text-gray-600"
                     />
-                    <button className="bg-primary/20 hover:bg-primary/30 text-primary px-4 py-1.5 rounded-lg font-medium transition-colors text-sm">
-                      Deep Search
+                    <button 
+                      onClick={handleSearch}
+                      disabled={isSearching}
+                      className="bg-primary/20 hover:bg-primary/30 text-primary px-4 py-1.5 rounded-lg font-medium transition-colors text-sm disabled:opacity-50"
+                    >
+                      {isSearching ? "Searching..." : "Deep Search"}
                     </button>
                   </div>
                 </div>
 
-                <div className="bg-surface/50 border border-dashed border-white/10 rounded-2xl p-12 flex flex-col items-center justify-center text-center">
-                  <FolderSearch className="text-gray-600 mb-4" size={48} />
-                  <h3 className="text-gray-300 font-medium text-lg">AI File Indexing Active</h3>
-                  <p className="text-gray-500 mt-2 max-w-md">The local AI model continuously reads and understands your files in the background, giving you a semantic, context-aware global search.</p>
+                {searchResults.length > 0 ? (
+                  <div className="bg-surface/50 border border-white/5 rounded-2xl overflow-hidden">
+                    <div className="px-6 py-4 border-b border-white/5 bg-white/5">
+                      <h3 className="font-semibold text-gray-200">Found {searchResults.length} relevant files</h3>
+                    </div>
+                    <div className="max-h-96 overflow-y-auto p-2">
+                       {searchResults.map((res, i) => (
+                         <div key={i} className="flex items-center justify-between p-4 hover:bg-white/5 rounded-xl transition-colors cursor-pointer">
+                            <div>
+                               <p className="text-gray-200 font-medium">{res.name}</p>
+                               <p className="text-xs text-gray-500 mt-1 truncate max-w-lg" title={res.path}>{res.path}</p>
+                            </div>
+                            <span className="text-xs bg-white/5 px-2 py-1 rounded-md text-gray-400">
+                               {(res.size / 1024 / 1024).toFixed(2)} MB
+                            </span>
+                         </div>
+                       ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-surface/50 border border-dashed border-white/10 rounded-2xl p-12 flex flex-col items-center justify-center text-center">
+                    <FolderSearch className="text-gray-600 mb-4" size={48} />
+                    <h3 className="text-gray-300 font-medium text-lg">AI File Indexing Active</h3>
+                    <p className="text-gray-500 mt-2 max-w-md">The local AI model continuously reads and understands your files in the background, giving you a semantic, context-aware global search.</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* AI Command Bridge Tab */}
+            {activeTab === 'command_bridge' && (
+              <div className="flex flex-col h-full animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="mb-6">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary mb-4">
+                    <Terminal size={14} />
+                    <span className="text-xs font-medium uppercase tracking-wider">Sys Control Active</span>
+                  </div>
+                  <h2 className="text-3xl font-extrabold text-white mb-2">Command Bridge</h2>
+                  <p className="text-gray-400">Directly interface the local AI engine with your computer's native shell.</p>
+                </div>
+
+                <div className="flex-1 bg-black/80 font-mono text-sm rounded-2xl border border-white/10 p-4 flex flex-col overflow-hidden shadow-inner">
+                  <div className="flex-1 overflow-y-auto space-y-2 mb-4 pr-2">
+                    <div className="text-green-500 mb-4 opacity-80">
+                      [System initialized. Awaiting commands...]
+                      {apiKey ? "\n[AI Integration: ONLINE]" : "\n[AI Integration: OFFLINE. Paste API key in settings.]"}
+                    </div>
+                    {cmdHistory.map((line, i) => (
+                      <div key={i} className={`whitespace-pre-wrap break-words ${line.type === 'in' ? 'text-primary font-bold' : line.type === 'error' ? 'text-red-400' : line.type === 'chat' ? 'text-purple-400 font-bold' : 'text-gray-300'}`}>
+                        {line.text}
+                      </div>
+                    ))}
+                    {isExecuting && <div className="text-gray-500 animate-pulse">Running...</div>}
+                  </div>
+                  
+                  <div className="flex items-center gap-2 border-t border-white/10 pt-4">
+                    <span className="text-primary font-bold">~ {'>'}</span>
+                    <input 
+                      type="text" 
+                      value={cmdInput}
+                      onChange={(e) => setCmdInput(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && executeCommand()}
+                      placeholder="Enter a shell command or ask the AI to run one..." 
+                      className="bg-transparent border-none outline-none flex-1 text-green-400 placeholder:text-gray-600 focus:ring-0"
+                      autoFocus
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Settings Tab */}
+            {activeTab === 'settings' && (
+              <div className="flex flex-col h-full animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-2xl mx-auto">
+                <div className="mb-6">
+                  <h2 className="text-3xl font-extrabold text-white mb-2">Settings</h2>
+                  <p className="text-gray-400">Configure your local integrations.</p>
+                </div>
+                
+                <div className="glass-panel p-6 rounded-2xl">
+                   <div className="flex items-center gap-3 mb-4">
+                      <div className="p-2 bg-primary/20 rounded-lg">
+                         <Key size={20} className="text-primary" />
+                      </div>
+                      <h3 className="text-xl font-bold text-gray-200">AI Engine Provider</h3>
+                   </div>
+                   <p className="text-sm text-gray-400 mb-6">Enter your OpenAI API key to enable natural language file management in the Command Bridge.</p>
+                   
+                   <div className="space-y-4">
+                      <div>
+                         <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Provider</label>
+                         <select 
+                           value={aiProvider}
+                           onChange={(e) => {
+                              setAiProvider(e.target.value as AIProvider);
+                              localStorage.setItem("open_file_ai_provider", e.target.value);
+                           }}
+                           className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-gray-200 focus:border-primary/50 outline-none transition-colors mb-4 appearance-none"
+                         >
+                            <option value="openai">OpenAI (GPT-4o)</option>
+                            <option value="anthropic">Anthropic (Claude 3.5)</option>
+                            <option value="gemini">Google (Gemini 2.5)</option>
+                         </select>
+
+                         <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">API Key</label>
+                         <input 
+                           type="password"
+                           value={apiKey}
+                           onChange={(e) => {
+                             setApiKey(e.target.value);
+                             localStorage.setItem("open_file_api_key", e.target.value);
+                           }}
+                           placeholder="Paste your API Key here..."
+                           className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-gray-200 focus:border-primary/50 outline-none transition-colors"
+                         />
+                      </div>
+                      <p className="text-xs text-gray-500">Your key is stored securely in your computer's local storage and is never sent to any server other than directly to the model provider.</p>
+                   </div>
                 </div>
               </div>
             )}

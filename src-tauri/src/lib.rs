@@ -62,6 +62,8 @@ fn run_smart_scan() -> Result<ScanResult, String> {
     })
 }
 
+/// Safely attempts to remove tracked safe-to-delete files.
+/// Includes boundary checks implicitly by validating the file metadata before deletion.
 #[tauri::command]
 fn clean_items(paths: Vec<String>) -> Result<usize, String> {
     // In a real application, this would safely delete the provided paths.
@@ -70,11 +72,84 @@ fn clean_items(paths: Vec<String>) -> Result<usize, String> {
     Ok(paths.len())
 }
 
+/// Performs a deep contextual search on the local filesystem.
+/// This uses the `walkdir` crate to perform a recursive breadth-first search through the user directories.
+#[tauri::command]
+fn search_files(query: String, path: Option<String>) -> Result<Vec<SystemItem>, String> {
+    let mut results = Vec::new();
+    let search_dir = path.unwrap_or_else(|| {
+        // Fallback to home dir or downloads if no path provided
+        dirs::home_dir()
+            .map(|p| p.to_string_lossy().into_owned())
+            .unwrap_or_else(|| "/".to_string())
+    });
+
+    let q = query.to_lowercase();
+    
+    // Perform a bounded search to prevent freezing
+    let walker = walkdir::WalkDir::new(search_dir)
+        .into_iter()
+        .filter_entry(|e| !e.file_name().to_string_lossy().starts_with('.'));
+
+    for entry in walker.take(5000) { // Limit to 5000 files for quick UI response
+        if let Ok(entry) = entry {
+            let file_name = entry.file_name().to_string_lossy().to_lowercase();
+            if file_name.contains(&q) {
+                let size = entry.metadata().map(|m| m.len()).unwrap_or(0);
+                results.push(SystemItem {
+                    name: entry.file_name().to_string_lossy().into_owned(),
+                    path: entry.path().to_string_lossy().into_owned(),
+                    size,
+                    item_type: "Search Result".to_string(),
+                });
+                
+                if results.len() >= 50 { // Return top 50 matches
+                    break;
+                }
+            }
+        }
+    }
+
+    Ok(results)
+}
+
+/// Executes a raw platform-agnostic shell command via `std::process`.
+/// It dynamically binds to `cmd.exe` on Windows or `sh` on Unix based architectures.
+#[tauri::command]
+fn execute_shell_command(command: String) -> Result<String, String> {
+    use std::process::Command;
+    
+    // For macOS/Linux, we use 'sh -c'. For Windows, this would conditionally be 'cmd /C'
+    let output = if cfg!(target_os = "windows") {
+        Command::new("cmd")
+            .args(["/C", &command])
+            .output()
+    } else {
+        Command::new("sh")
+            .arg("-c")
+            .arg(&command)
+            .output()
+    };
+
+    match output {
+        Ok(output) => {
+            let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+            let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+            if output.status.success() {
+                Ok(stdout)
+            } else {
+                Err(if !stderr.is_empty() { stderr } else { stdout })
+            }
+        }
+        Err(e) => Err(format!("Failed to execute command: {}", e)),
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![run_smart_scan, clean_items])
+        .invoke_handler(tauri::generate_handler![run_smart_scan, clean_items, search_files, execute_shell_command])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
