@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Open File — Your AI-Powered Computer Assistant</title>
+    <meta name="description" content="Open File is a secure, open-source AI assistant that bridges your computer's file system with natural language control. No malware. No backdoors. Just pure automation.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav id="navbar">
+        <div class="nav-inner">
+            <div class="nav-brand">
+                <div class="brand-icon">📂</div>
+                <span class="brand-name">Open File</span>
+            </div>
+            <div class="nav-links">
+                <a href="#features">Features</a>
+                <a href="#security">Security</a>
+                <a href="#how-it-works">How It Works</a>
+                <a href="#transparency">Transparency</a>
+                <a href="#download" class="nav-cta">Download Free</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="hero">
+        <div class="hero-glow"></div>
+        <div class="hero-content">
+            <div class="hero-badge">100% Open Source &bull; MIT Licensed &bull; Zero Telemetry</div>
+            <h1>Your Personal <span class="gradient-text">Jarvis</span> for macOS.</h1>
+            <p class="hero-subtitle">Open File bridges your computer's native terminal with AI. Automate file management, schedule background tasks, and control your machine with natural language &mdash; all running locally on your hardware.</p>
+            <div class="hero-actions">
+                <a href="#download" class="btn btn-primary">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Download for macOS
+                </a>
+                <a href="https://github.com/slimboi34/OPEN_FILE" target="_blank" class="btn btn-secondary">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+                    View Source Code
+                </a>
+            </div>
+            <p class="hero-trust">Trusted by developers. Built with Rust &amp; Tauri. No data ever leaves your machine.</p>
+        </div>
+        <div class="hero-visual">
+            <div class="terminal-window">
+                <div class="terminal-header">
+                    <div class="terminal-dot red"></div>
+                    <div class="terminal-dot yellow"></div>
+                    <div class="terminal-dot green"></div>
+                    <span class="terminal-title">Open File — Command Bridge</span>
+                </div>
+                <div class="terminal-body">
+                    <div class="term-line"><span class="term-prompt">~ &gt;</span> <span class="term-input">Find all PDF files in my Documents folder over 10MB</span></div>
+                    <div class="term-line term-ai"><span class="term-tag">[GEMINI]</span> Reasoning (Step 1)...</div>
+                    <div class="term-line term-cmd">&gt; Executing: find ~/Documents -name "*.pdf" -size +10M</div>
+                    <div class="term-line term-out">/Users/josh/Documents/thesis_final.pdf (42MB)</div>
+                    <div class="term-line term-out">/Users/josh/Documents/design_spec.pdf (18MB)</div>
+                    <div class="term-line term-ai"><span class="term-tag">[GEMINI]</span> Reasoning (Step 2)...</div>
+                    <div class="term-line term-done">Found 2 PDF files over 10MB totaling 60MB.</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features">
+        <div class="section-inner">
+            <div class="section-header">
+                <h2>Everything Your Computer <span class="gradient-text">Should</span> Do.</h2>
+                <p>Open File turns your Mac into an intelligent workstation that understands what you want and does it automatically.</p>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🧠</div>
+                    <h3>Autonomous Agent Engine</h3>
+                    <p>Unlike simple command translators, Open File runs an autonomous ReAct loop. It executes commands, reads the output, reasons about what to do next, and keeps going until the job is done.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">⏰</div>
+                    <h3>Jarvis Automation Routines</h3>
+                    <p>Schedule background tasks in plain English. "Clean my Downloads every week." "Empty the Trash daily." Open File handles it silently while you work.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔍</div>
+                    <h3>AI Deep Search (Spotlight)</h3>
+                    <p>Powered by macOS's native Spotlight index for instant, millisecond file lookups across your entire hard drive &mdash; not a slow file crawler.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🖥️</div>
+                    <h3>Command Bridge</h3>
+                    <p>A built-in terminal where natural language is translated into real macOS shell commands. Ask questions, automate tasks, manage files &mdash; all from one interface.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🤖</div>
+                    <h3>Multi-Provider AI</h3>
+                    <p>Bring your own API key. Works with OpenAI (GPT-4o), Anthropic (Claude 3.5), and Google (Gemini 2.5). You choose who powers your assistant.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🧹</div>
+                    <h3>Smart Scan & Cleanup</h3>
+                    <p>Identifies system cache, duplicate files, old downloads, and app logs. Shows you exactly what's safe to delete before touching anything.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Security Section -->
+    <section id="security">
+        <div class="section-inner">
+            <div class="security-layout">
+                <div class="security-content">
+                    <div class="section-header left-align">
+                        <div class="security-badge">🔒 Security First</div>
+                        <h2>This Is <span class="gradient-text">Not</span> Spyware.</h2>
+                        <p>We understand the concern. An app that can execute commands on your computer sounds dangerous. Here's why Open File is the opposite of malware:</p>
+                    </div>
+                    <div class="security-points">
+                        <div class="security-point">
+                            <div class="check">✓</div>
+                            <div>
+                                <strong>100% Open Source</strong>
+                                <p>Every single line of code is publicly available on GitHub under the MIT License. Anyone can audit it.</p>
+                            </div>
+                        </div>
+                        <div class="security-point">
+                            <div class="check">✓</div>
+                            <div>
+                                <strong>Zero Telemetry & Zero Data Collection</strong>
+                                <p>Open File sends absolutely no data anywhere. No analytics, no tracking, no phone-home. Your API key goes directly from your machine to the AI provider you choose &mdash; we never see it.</p>
+                            </div>
+                        </div>
+                        <div class="security-point">
+                            <div class="check">✓</div>
+                            <div>
+                                <strong>Built in Rust (Memory Safe)</strong>
+                                <p>The entire backend is written in Rust, a language designed to eliminate buffer overflows, use-after-free bugs, and other exploit vectors that plague C/C++ software.</p>
+                            </div>
+                        </div>
+                        <div class="security-point">
+                            <div class="check">✓</div>
+                            <div>
+                                <strong>Runs 100% Locally</strong>
+                                <p>Open File is a native, standalone macOS application. It does not require a server, cloud account, or internet connection to function (only the AI provider needs internet).</p>
+                            </div>
+                        </div>
+                        <div class="security-point">
+                            <div class="check">✓</div>
+                            <div>
+                                <strong>No Hidden Processes</strong>
+                                <p>Unlike spyware tools like Predator or Pegasus, Open File does not install kernel extensions, background daemons, or system-level hooks. When you close it, it's closed.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section id="how-it-works">
+        <div class="section-inner">
+            <div class="section-header">
+                <h2>How It <span class="gradient-text">Actually</span> Works.</h2>
+                <p>No magic. No tricks. Just a clean abstraction layer between you and your operating system's terminal.</p>
+            </div>
+            <div class="steps-grid">
+                <div class="step-card">
+                    <div class="step-number">01</div>
+                    <h3>You Speak</h3>
+                    <p>Type a natural language request into the Command Bridge. Something like: <em>"Organize my Desktop by file type into folders."</em></p>
+                </div>
+                <div class="step-arrow">→</div>
+                <div class="step-card">
+                    <div class="step-number">02</div>
+                    <h3>AI Translates</h3>
+                    <p>Your chosen AI provider (running on their servers, via your API key) converts your request into a precise macOS shell command.</p>
+                </div>
+                <div class="step-arrow">→</div>
+                <div class="step-card">
+                    <div class="step-number">03</div>
+                    <h3>Rust Executes</h3>
+                    <p>The Tauri Rust backend securely runs the command on your machine using <code>std::process::Command</code>. The output is captured and returned.</p>
+                </div>
+                <div class="step-arrow">→</div>
+                <div class="step-card">
+                    <div class="step-number">04</div>
+                    <h3>AI Reasons & Repeats</h3>
+                    <p>If the task isn't complete, the AI reads the output, decides what to do next, and generates more commands. This loop continues until the objective is fulfilled.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Transparency -->
+    <section id="transparency">
+        <div class="section-inner">
+            <div class="section-header">
+                <h2>Radical <span class="gradient-text">Transparency</span>.</h2>
+                <p>We believe software that touches your file system should be 100% auditable.</p>
+            </div>
+            <div class="transparency-grid">
+                <div class="transparency-card">
+                    <h3>📖 Read Every Line</h3>
+                    <p>The full source code is available at <a href="https://github.com/slimboi34/OPEN_FILE" target="_blank">github.com/slimboi34/OPEN_FILE</a>. Clone it, read it, build it yourself.</p>
+                </div>
+                <div class="transparency-card">
+                    <h3>🏗️ Build From Source</h3>
+                    <p>Don't trust the binary? Clone the repo, run <code>npm install && npm run tauri build</code>, and compile your own copy. You'll get the exact same application.</p>
+                </div>
+                <div class="transparency-card">
+                    <h3>📋 MIT License</h3>
+                    <p>Licensed under MIT by Joshua Harty. You can use, modify, and distribute this software freely. No vendor lock-in, no subscriptions, no hidden terms.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Download Section -->
+    <section id="download">
+        <div class="section-inner">
+            <div class="download-box">
+                <h2>Ready to Take Control?</h2>
+                <p>Download Open File for free. Bring your own AI key. Automate everything.</p>
+                <div class="download-actions">
+                    <a href="https://github.com/slimboi34/OPEN_FILE/releases" target="_blank" class="btn btn-primary btn-lg">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        Download for macOS (.dmg)
+                    </a>
+                    <a href="https://github.com/slimboi34/OPEN_FILE" target="_blank" class="btn btn-secondary btn-lg">
+                        Build From Source
+                    </a>
+                </div>
+                <div class="download-meta">
+                    <span>✓ Free & Open Source</span>
+                    <span>✓ No Account Required</span>
+                    <span>✓ No Data Collected</span>
+                    <span>✓ macOS 12+</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-inner">
+            <div class="footer-brand">
+                <div class="brand-icon">📂</div>
+                <span>Open File</span>
+            </div>
+            <p>&copy; 2026 Joshua Harty. MIT License. Built with Rust, Tauri, and React.</p>
+            <div class="footer-links">
+                <a href="https://github.com/slimboi34/OPEN_FILE" target="_blank">GitHub</a>
+                <a href="https://github.com/slimboi34/OPEN_FILE/blob/main/LICENSE" target="_blank">License</a>
+                <a href="https://github.com/slimboi34/OPEN_FILE/releases" target="_blank">Releases</a>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>
