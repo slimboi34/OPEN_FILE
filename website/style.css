@@ -45,7 +45,7 @@ code { background: rgba(255,255,255,0.08); padding: 2px 8px; border-radius: 6px;
     padding: 16px 32px;
 }
 .nav-brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1.1rem; }
-.brand-icon { font-size: 1.4rem; }
+.brand-icon-img { width: 32px; height: 32px; border-radius: 8px; }
 .nav-links { display: flex; align-items: center; gap: 28px; }
 .nav-links a { color: var(--text-secondary); font-size: 0.85rem; font-weight: 500; transition: color 0.2s; }
 .nav-links a:hover { color: var(--text-primary); }
