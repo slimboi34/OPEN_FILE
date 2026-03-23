@@ -73,40 +73,40 @@ fn clean_items(paths: Vec<String>) -> Result<usize, String> {
 }
 
 /// Performs a deep contextual search on the local filesystem.
-/// This uses the `walkdir` crate to perform a recursive breadth-first search through the user directories.
+/// Overhauled to use macOS's blistering fast `mdfind` Spotlight command.
 #[tauri::command]
 fn search_files(query: String, path: Option<String>) -> Result<Vec<SystemItem>, String> {
-    let mut results = Vec::new();
-    let search_dir = path.unwrap_or_else(|| {
-        // Fallback to home dir or downloads if no path provided
-        dirs::home_dir()
-            .map(|p| p.to_string_lossy().into_owned())
-            .unwrap_or_else(|| "/".to_string())
-    });
-
-    let q = query.to_lowercase();
+    use std::process::Command;
     
-    // Perform a bounded search to prevent freezing
-    let walker = walkdir::WalkDir::new(search_dir)
-        .into_iter()
-        .filter_entry(|e| !e.file_name().to_string_lossy().starts_with('.'));
+    // In cross-platform mode, we would fallback to walkdir for Linux/Windows.
+    // For macOS dedicated, we leverage the OS indexer natively.
+    let mut cmd = Command::new("mdfind");
+    if let Some(ref p) = path {
+        cmd.arg("-onlyin").arg(p);
+    }
+    // Crucial: we specifically use -name to reproduce the `file_name.contains` behavior
+    // from the previous slow walkdir implementation. This scopes queries to explicit files.
+    cmd.arg("-name").arg(&query);
 
-    for entry in walker.take(5000) { // Limit to 5000 files for quick UI response
-        if let Ok(entry) = entry {
-            let file_name = entry.file_name().to_string_lossy().to_lowercase();
-            if file_name.contains(&q) {
-                let size = entry.metadata().map(|m| m.len()).unwrap_or(0);
-                results.push(SystemItem {
-                    name: entry.file_name().to_string_lossy().into_owned(),
-                    path: entry.path().to_string_lossy().into_owned(),
-                    size,
-                    item_type: "Search Result".to_string(),
-                });
-                
-                if results.len() >= 50 { // Return top 50 matches
-                    break;
-                }
-            }
+    let output = cmd.output().map_err(|e| format!("Failed to execute mdfind: {}", e))?;
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    
+    let mut results = Vec::new();
+    
+    // Iterate over the output lines and map to explicit paths
+    for line in stdout.lines().take(50) {
+        let trimmed_path = line.trim();
+        if trimmed_path.is_empty() { continue; }
+        
+        if let Ok(metadata) = std::fs::metadata(trimmed_path) {
+            let path_obj = std::path::Path::new(trimmed_path);
+            let name = path_obj.file_name().unwrap_or_default().to_string_lossy().to_string();
+            results.push(SystemItem {
+                name,
+                path: trimmed_path.to_string(),
+                size: metadata.len(),
+                item_type: "Search Result".to_string(),
+            });
         }
     }
 
@@ -152,4 +152,17 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![run_smart_scan, clean_items, search_files, execute_shell_command])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_mdfind_search() {
+        // Spotlight index completeness varies wildly between developer environments.
+        // We test that the command bindings to macOS execute and map without OS errors.
+        let result = search_files("test_query_string_123".to_string(), None);
+        assert!(result.is_ok(), "The backend should successfully construct and execute the mdfind subprocess.");
+    }
 }

@@ -1,12 +1,28 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, CartesianGrid
 } from "recharts";
-import { HardDrive, Search, ShieldCheck, Trash2, Settings, Activity, FolderSearch, AlertTriangle, Terminal, Key } from "lucide-react";
+import { HardDrive, Search, ShieldCheck, Trash2, Settings, Activity, FolderSearch, AlertTriangle, Terminal, Key, Bot, Clock, Plus, Trash } from "lucide-react";
 import { generateCommand, AIProvider } from "./ai";
 import "./App.css";
+
+type Schedule = 'hourly' | 'daily' | 'weekly';
+interface AutomationTask {
+  id: string;
+  name: string;
+  prompt: string;
+  schedule: Schedule;
+  lastRun: number | null;
+}
+interface AutomationLog {
+  timestamp: number;
+  taskName: string;
+  command: string;
+  output: string;
+  error?: string;
+}
 
 const COLORS = ['#3b82f6', '#8b5cf6', '#ef4444', '#10b981', '#f59e0b'];
 
@@ -40,15 +56,73 @@ function App() {
   // Settings State
   const [apiKey, setApiKey] = useState(() => localStorage.getItem("open_file_api_key") || "");
   const [aiProvider, setAiProvider] = useState<AIProvider>(() => (localStorage.getItem("open_file_ai_provider") as AIProvider) || "openai");
+  const [settingsSaved, setSettingsSaved] = useState(false);
+
+  // Jarvis State
+  const [automations, setAutomations] = useState<AutomationTask[]>(() => JSON.parse(localStorage.getItem('open_file_automations') || '[]'));
+  const [automationLogs, setAutomationLogs] = useState<AutomationLog[]>(() => JSON.parse(localStorage.getItem('open_file_automation_logs') || '[]'));
+  
+  // New Jarvis UI State
+  const [newRoutineName, setNewRoutineName] = useState("");
+  const [newRoutinePrompt, setNewRoutinePrompt] = useState("");
+  const [newRoutineSchedule, setNewRoutineSchedule] = useState<Schedule>("daily");
 
   const fileData = [
     { name: "System Cache", size: 12.5, items: 3400 },
     { name: "Large Media", size: 45.2, items: 15 },
     { name: "Duplicates", size: 8.4, items: 420 },
-    { name: "App Logs", size: 3.1, items: 2100 },
+    { name: "App Logs", size: 2.1, items: 120 },
     { name: "Safe to Keep", size: 312.8, items: 145000 },
   ];
 
+  // Persist Jarvis State
+  useEffect(() => localStorage.setItem('open_file_automations', JSON.stringify(automations)), [automations]);
+  useEffect(() => localStorage.setItem('open_file_automation_logs', JSON.stringify(automationLogs)), [automationLogs]);
+
+  // Background Automation Engine
+  useEffect(() => {
+    const executeBackgroundRoutine = async (task: AutomationTask, k: string, p: AIProvider) => {
+       const now = Date.now();
+       try {
+          const cmd = await generateCommand(p, k, task.prompt);
+          if (cmd.startsWith("CHAT:")) {
+             setAutomationLogs(prev => [{timestamp: now, taskName: task.name, command: 'N/A', output: cmd}, ...prev].slice(0, 50));
+          } else {
+             const out: string = await invoke("execute_shell_command", { command: cmd });
+             setAutomationLogs(prev => [{timestamp: now, taskName: task.name, command: cmd, output: out}, ...prev].slice(0, 50));
+          }
+       } catch (e: any) {
+          setAutomationLogs(prev => [{timestamp: now, taskName: task.name, command: 'ERROR', output: '', error: String(e)}, ...prev].slice(0, 50));
+       }
+    };
+
+    const interval = setInterval(() => {
+      const currentApiKey = localStorage.getItem("open_file_api_key");
+      const currentProvider = (localStorage.getItem("open_file_ai_provider") as AIProvider) || "openai";
+      if (!currentApiKey) return;
+
+      setAutomations(prev => {
+         const now = Date.now();
+         let shouldUpdate = false;
+         
+         const nextAutomations = prev.map(task => {
+             let thresholdMs = 3600000; // Hourly
+             if (task.schedule === 'daily') thresholdMs = 86400000;
+             if (task.schedule === 'weekly') thresholdMs = 604800000;
+             
+             if (!task.lastRun || (now - task.lastRun > thresholdMs)) {
+                 shouldUpdate = true;
+                 executeBackgroundRoutine(task, currentApiKey, currentProvider);
+                 return { ...task, lastRun: now };
+             }
+             return task;
+         });
+         return shouldUpdate ? nextAutomations : prev;
+      });
+    }, 60000); // Check every minute
+
+    return () => clearInterval(interval);
+  }, []);
 
   /**
    * Triggers the Tauri Rust backend to perform a system-wide scan for junk files.
@@ -179,6 +253,12 @@ function App() {
             onClick={() => setActiveTab("command_bridge")}
             icon={<Terminal size={18} />} 
             label="Command Bridge" 
+          />
+          <NavItem 
+            active={activeTab === "jarvis"} 
+            onClick={() => setActiveTab("jarvis")}
+            icon={<Bot size={18} />} 
+            label="Jarvis Automations" 
           />
           <NavItem active={false} icon={<FolderSearch size={18} />} label="Space Lens" />
           <NavItem active={false} icon={<Trash2 size={18} />} label="Uninstaller" />
@@ -486,6 +566,123 @@ function App() {
                          />
                       </div>
                       <p className="text-xs text-gray-500">Your key is stored securely in your computer's local storage and is never sent to any server other than directly to the model provider.</p>
+                      
+                      <div className="pt-4 border-t border-white/5 flex items-center gap-4">
+                         <button 
+                           onClick={() => {
+                             localStorage.setItem("open_file_api_key", apiKey);
+                             localStorage.setItem("open_file_ai_provider", aiProvider);
+                             setSettingsSaved(true);
+                             setTimeout(() => setSettingsSaved(false), 3000);
+                           }}
+                           className="bg-primary hover:bg-blue-500 text-white px-6 py-2.5 rounded-lg font-bold shadow-lg shadow-primary/20 transition-all"
+                         >
+                           Save Configuration
+                         </button>
+                         {settingsSaved && (
+                           <span className="text-green-400 text-sm font-medium flex items-center gap-2 animate-in fade-in duration-300">
+                             <ShieldCheck size={16} /> Configuration Saved!
+                           </span>
+                         )}
+                      </div>
+                   </div>
+                </div>
+              </div>
+            )}
+            
+            {/* Jarvis Tab */}
+            {activeTab === 'jarvis' && (
+              <div className="flex flex-col h-full animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-5xl mx-auto w-full">
+                <div className="mb-6">
+                  <h2 className="text-3xl font-extrabold text-white mb-2 flex items-center gap-2">
+                    <Bot className="text-primary" size={32} /> Jarvis Engine
+                  </h2>
+                  <p className="text-gray-400">Automated background routines run strictly on your provided schedules.</p>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-6 flex-1 overflow-hidden pb-6">
+                   <div className="flex flex-col gap-6 overflow-y-auto pr-2">
+                      <div className="glass-panel p-6 rounded-2xl">
+                         <h3 className="text-xl font-bold text-gray-200 mb-4 flex items-center gap-2"><Plus size={18} /> New Routine</h3>
+                         <div className="space-y-4">
+                            <input 
+                              type="text" value={newRoutineName} onChange={e => setNewRoutineName(e.target.value)}
+                              placeholder="Routine Name (e.g. Empty Trash)" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-gray-200 focus:border-primary/50 outline-none" 
+                            />
+                            <textarea
+                              value={newRoutinePrompt} onChange={e => setNewRoutinePrompt(e.target.value)}
+                              placeholder="Natural Language Objective (e.g. Delete all files in my Downloads folder over 500MB)" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-gray-200 focus:border-primary/50 outline-none h-24 resize-none" 
+                            />
+                            <div className="flex gap-4">
+                               <select 
+                                 value={newRoutineSchedule} onChange={e => setNewRoutineSchedule(e.target.value as Schedule)}
+                                 className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-gray-200 focus:border-primary/50 outline-none appearance-none"
+                               >
+                                  <option value="hourly">Run Hourly</option>
+                                  <option value="daily">Run Daily</option>
+                                  <option value="weekly">Run Weekly</option>
+                               </select>
+                               <button 
+                                 onClick={() => {
+                                    if(newRoutineName && newRoutinePrompt) {
+                                       setAutomations(prev => [...prev, { id: Math.random().toString(36).substr(2, 9), name: newRoutineName, prompt: newRoutinePrompt, schedule: newRoutineSchedule, lastRun: null }]);
+                                       setNewRoutineName(""); setNewRoutinePrompt("");
+                                    }
+                                 }}
+                                 className="bg-primary hover:bg-blue-500 text-white px-6 rounded-xl font-bold transition-all"
+                               >
+                                 Add
+                               </button>
+                            </div>
+                         </div>
+                      </div>
+                      
+                      <div className="glass-panel p-6 rounded-2xl flex-1">
+                         <h3 className="text-xl font-bold text-gray-200 mb-4 flex items-center gap-2"><Clock size={18} /> Active Routines</h3>
+                         {automations.length === 0 ? (
+                            <p className="text-gray-500 text-sm">No scheduled routines. Create one above.</p>
+                         ) : (
+                            <div className="space-y-3">
+                               {automations.map(task => (
+                                  <div key={task.id} className="bg-black/30 border border-white/5 rounded-xl p-4 flex items-center justify-between">
+                                     <div>
+                                        <div className="text-white font-medium text-sm flex items-center gap-2">
+                                          {task.name} 
+                                          <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded-full uppercase tracking-wider text-gray-300">{task.schedule}</span>
+                                        </div>
+                                        <div className="text-xs text-gray-500 mt-1 truncate max-w-[200px]">{task.prompt}</div>
+                                     </div>
+                                     <button onClick={() => setAutomations(prev => prev.filter(t => t.id !== task.id))} className="text-red-400/50 hover:text-red-400 transition-colors p-2">
+                                        <Trash size={16} />
+                                     </button>
+                                  </div>
+                               ))}
+                            </div>
+                         )}
+                      </div>
+                   </div>
+
+                   <div className="glass-panel rounded-2xl flex flex-col overflow-hidden border border-white/5">
+                      <div className="bg-black/40 p-4 border-b border-white/5">
+                         <h3 className="text-sm font-bold text-gray-300 uppercase tracking-wider">Engine Activity Log</h3>
+                      </div>
+                      <div className="p-4 flex-1 overflow-y-auto space-y-4 font-mono text-xs">
+                         {automationLogs.length === 0 ? (
+                            <div className="text-gray-600 italic">No background activity recorded yet. Logs will appear here when routines execute.</div>
+                         ) : (
+                            automationLogs.map((log, i) => (
+                               <div key={i} className="border-l-2 border-primary/50 pl-3">
+                                  <div className="text-gray-500 mb-1">{new Date(log.timestamp).toLocaleString()} • <span className="text-primary">{log.taskName}</span></div>
+                                  <div className="text-gray-300 font-bold break-all mb-1">&gt; {log.command}</div>
+                                  {log.error ? (
+                                     <div className="text-red-400 break-all">{log.error}</div>
+                                  ) : (
+                                     <div className="text-green-400 break-all">{log.output || "Success (No Output)"}</div>
+                                  )}
+                               </div>
+                            ))
+                         )}
+                      </div>
                    </div>
                 </div>
               </div>
