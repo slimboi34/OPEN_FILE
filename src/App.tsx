@@ -5,7 +5,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid
 } from "recharts";
 import { HardDrive, Search, ShieldCheck, Trash2, Settings, Activity, FolderSearch, AlertTriangle, Terminal, Key, Bot, Clock, Plus, Trash } from "lucide-react";
-import { generateCommand, AIProvider } from "./ai";
+import { generateAgentResponse, AIProvider, Message } from "./ai";
 import "./App.css";
 
 type Schedule = 'hourly' | 'daily' | 'weekly';
@@ -84,12 +84,34 @@ function App() {
     const executeBackgroundRoutine = async (task: AutomationTask, k: string, p: AIProvider) => {
        const now = Date.now();
        try {
-          const cmd = await generateCommand(p, k, task.prompt);
-          if (cmd.startsWith("CHAT:")) {
-             setAutomationLogs(prev => [{timestamp: now, taskName: task.name, command: 'N/A', output: cmd}, ...prev].slice(0, 50));
-          } else {
-             const out: string = await invoke("execute_shell_command", { command: cmd });
-             setAutomationLogs(prev => [{timestamp: now, taskName: task.name, command: cmd, output: out}, ...prev].slice(0, 50));
+          let loopMessages: Message[] = [
+             { role: 'user', content: task.prompt }
+          ];
+          let maxSteps = 10;
+          let step = 0;
+
+          while (step < maxSteps) {
+             const aiResponse = await generateAgentResponse(p, k, loopMessages);
+             loopMessages.push({ role: 'assistant', content: aiResponse });
+
+             if (aiResponse.startsWith("DONE:")) {
+                 setAutomationLogs(prev => [{timestamp: now, taskName: task.name, command: 'DONE', output: aiResponse.replace("DONE:", "").trim()}, ...prev].slice(0, 50));
+                 break;
+             } else if (aiResponse.startsWith("COMMAND:")) {
+                 const cmd = aiResponse.replace("COMMAND:", "").trim();
+                 try {
+                    const out: string = await invoke("execute_shell_command", { command: cmd });
+                    setAutomationLogs(prev => [{timestamp: now, taskName: task.name, command: cmd, output: out}, ...prev].slice(0, 50));
+                    loopMessages.push({ role: 'user', content: `[COMMAND OUTPUT]\n${out}` });
+                 } catch (err: any) {
+                    setAutomationLogs(prev => [{timestamp: now, taskName: task.name, command: cmd, output: `ERROR: ${err}`}, ...prev].slice(0, 50));
+                    loopMessages.push({ role: 'user', content: `[COMMAND ERROR]\n${err}` });
+                 }
+             } else {
+                 setAutomationLogs(prev => [{timestamp: now, taskName: task.name, command: 'N/A', output: aiResponse}, ...prev].slice(0, 50));
+                 break;
+             }
+             step++;
           }
        } catch (e: any) {
           setAutomationLogs(prev => [{timestamp: now, taskName: task.name, command: 'ERROR', output: '', error: String(e)}, ...prev].slice(0, 50));
@@ -194,25 +216,52 @@ function App() {
     setIsExecuting(true);
     
     try {
-      let finalCommandToExecute = userInput;
-
-      // Wrap in AI logic if they have an API key!
-      if (apiKey) {
-        setCmdHistory(prev => [...prev, { type: 'chat', text: `[${aiProvider.toUpperCase()}] Translating intent...` }]);
-        finalCommandToExecute = await generateCommand(aiProvider, apiKey, userInput);
+      if (!apiKey) {
+         // Fallback to strict raw text command if no API key is set
+         const output: string = await invoke("execute_shell_command", { command: userInput });
+         setCmdHistory(prev => [...prev, { type: 'out', text: output }]);
+         setIsExecuting(false);
+         return;
       }
 
-      // If the AI determined it was just chat, don't execute a shell command
-      if (finalCommandToExecute.startsWith("CHAT: ")) {
-         setCmdHistory(prev => [...prev, { type: 'chat', text: finalCommandToExecute.replace("CHAT: ", "") }]);
-      } else {
-         // Show what the AI decided to run
-         if (apiKey && finalCommandToExecute !== userInput) {
-            setCmdHistory(prev => [...prev, { type: 'in', text: `> Executing: ${finalCommandToExecute}` }]);
-         }
+      // Autonomous Agent Loop (ReAct)
+      let loopMessages: Message[] = [
+         { role: 'user', content: userInput }
+      ];
+      let maxSteps = 15;
+      let step = 0;
 
-         const output: string = await invoke("execute_shell_command", { command: finalCommandToExecute });
-         setCmdHistory(prev => [...prev, { type: 'out', text: output }]);
+      while (step < maxSteps) {
+         setCmdHistory(prev => [...prev, { type: 'chat', text: `[${aiProvider.toUpperCase()}] Reasoning (Step ${step+1})...` }]);
+         
+         const aiResponse = await generateAgentResponse(aiProvider, apiKey, loopMessages);
+         loopMessages.push({ role: 'assistant', content: aiResponse });
+
+         if (aiResponse.startsWith("DONE:")) {
+             setCmdHistory(prev => [...prev, { type: 'chat', text: aiResponse.replace("DONE:", "").trim() }]);
+             break;
+         } else if (aiResponse.startsWith("COMMAND:")) {
+             const cmd = aiResponse.replace("COMMAND:", "").trim();
+             setCmdHistory(prev => [...prev, { type: 'in', text: `> Executing: ${cmd}` }]);
+             
+             try {
+                const output: string = await invoke("execute_shell_command", { command: cmd });
+                setCmdHistory(prev => [...prev, { type: 'out', text: output }]);
+                loopMessages.push({ role: 'user', content: `[COMMAND OUTPUT]\n${output}` });
+             } catch (err: any) {
+                setCmdHistory(prev => [...prev, { type: 'error', text: String(err) }]);
+                loopMessages.push({ role: 'user', content: `[COMMAND ERROR]\n${err}` });
+             }
+         } else {
+             // Safe Fallback if AI fails to follow strict prefix output protocol
+             setCmdHistory(prev => [...prev, { type: 'chat', text: aiResponse }]);
+             break; 
+         }
+         step++;
+      }
+      
+      if (step >= maxSteps) {
+          setCmdHistory(prev => [...prev, { type: 'error', text: 'Agent reached maximum step limit.' }]);
       }
     } catch (e: any) {
       setCmdHistory(prev => [...prev, { type: 'error', text: String(e) }]);
