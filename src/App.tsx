@@ -280,7 +280,7 @@ function App() {
             <img src="/auraclean_icon.png" alt="AuraClean Logo" className="w-full h-full object-cover" />
           </div>
           <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-100 to-gray-400">
-            Open File
+            Open File Agent
           </h1>
         </div>
 
@@ -289,25 +289,25 @@ function App() {
             active={activeTab === "smart_scan"} 
             onClick={() => setActiveTab("smart_scan")}
             icon={<Activity size={18} />} 
-            label="Smart Scan" 
+            label="Agent Diagnostics" 
           />
           <NavItem 
             active={activeTab === "deep_search"} 
             onClick={() => setActiveTab("deep_search")}
             icon={<Search size={18} />} 
-            label="AI Deep Search" 
+            label="Semantic Indexer" 
           />
           <NavItem 
             active={activeTab === "command_bridge"} 
             onClick={() => setActiveTab("command_bridge")}
             icon={<Terminal size={18} />} 
-            label="Command Bridge" 
+            label="Agent Bridge" 
           />
           <NavItem 
             active={activeTab === "jarvis"} 
             onClick={() => setActiveTab("jarvis")}
             icon={<Bot size={18} />} 
-            label="Jarvis Automations" 
+            label="Autonomous Routines" 
           />
           <NavItem active={false} icon={<FolderSearch size={18} />} label="Space Lens" />
           <NavItem active={false} icon={<Trash2 size={18} />} label="Uninstaller" />
@@ -353,8 +353,8 @@ function App() {
               <>
                 <div className="flex items-end justify-between">
                   <div>
-                    <h2 className="text-3xl font-extrabold text-white mb-2">System Overview</h2>
-                    <p className="text-gray-400">Open File's AI engine is standing by to optimize your system.</p>
+                    <h2 className="text-3xl font-extrabold text-white mb-2">Agent Diagnostics</h2>
+                    <p className="text-gray-400">The autonomous agent is standing by to deeply analyze and optimize your system.</p>
                   </div>
                   <button 
                     onClick={handleScan}
@@ -364,7 +364,7 @@ function App() {
                     }`}
                   >
                     <Search size={18} className={isScanning ? "animate-spin" : ""} />
-                    {isScanning ? `Scanning... ${scanProgress}%` : "Run Smart Scan"}
+                    {isScanning ? `Executing Agent Scan... ${scanProgress}%` : "Run Agent Diagnostics"}
                   </button>
                 </div>
 
@@ -473,8 +473,8 @@ function App() {
             {activeTab === "deep_search" && (
               <div className="space-y-6">
                 <div>
-                  <h2 className="text-3xl font-extrabold text-white mb-2">AI Contextual Deep Search</h2>
-                  <p className="text-gray-400">Search through the detailed context of all your computer's files using natural language.</p>
+                  <h2 className="text-3xl font-extrabold text-white mb-2">Semantic Indexer</h2>
+                  <p className="text-gray-400">Query the agent to find specific files based on context, meaning, and natural language descriptions.</p>
                 </div>
                 
                 <div className="glass-panel rounded-2xl p-6">
@@ -535,8 +535,8 @@ function App() {
                     <Terminal size={14} />
                     <span className="text-xs font-medium uppercase tracking-wider">Sys Control Active</span>
                   </div>
-                  <h2 className="text-3xl font-extrabold text-white mb-2">Command Bridge</h2>
-                  <p className="text-gray-400">Directly interface the local AI engine with your computer's native shell.</p>
+                  <h2 className="text-3xl font-extrabold text-white mb-2">Agent Bridge</h2>
+                  <p className="text-gray-400">Directly interface the autonomous agent's ReAct loop with your computer's native shell.</p>
                 </div>
 
                 <div className="flex-1 bg-black/80 font-mono text-sm rounded-2xl border border-white/10 p-4 flex flex-col overflow-hidden shadow-inner">
@@ -644,9 +644,9 @@ function App() {
               <div className="flex flex-col h-full animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-5xl mx-auto w-full">
                 <div className="mb-6">
                   <h2 className="text-3xl font-extrabold text-white mb-2 flex items-center gap-2">
-                    <Bot className="text-primary" size={32} /> Jarvis Engine
+                    <Bot className="text-primary" size={32} /> Autonomous Routines
                   </h2>
-                  <p className="text-gray-400">Automated background routines run strictly on your provided schedules.</p>
+                  <p className="text-gray-400">Schedule the agent to run background routines and local tasks autonomously on a strict cron schedule.</p>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-6 flex-1 overflow-hidden pb-6">
@@ -656,11 +656,11 @@ function App() {
                          <div className="space-y-4">
                             <input 
                               type="text" value={newRoutineName} onChange={e => setNewRoutineName(e.target.value)}
-                              placeholder="Routine Name (e.g. Empty Trash)" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-gray-200 focus:border-primary/50 outline-none" 
+                              placeholder="Routine Name (e.g. Clean Downloads)" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-gray-200 focus:border-primary/50 outline-none" 
                             />
                             <textarea
                               value={newRoutinePrompt} onChange={e => setNewRoutinePrompt(e.target.value)}
-                              placeholder="Natural Language Objective (e.g. Delete all files in my Downloads folder over 500MB)" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-gray-200 focus:border-primary/50 outline-none h-24 resize-none" 
+                              placeholder="Natural Language Objective (e.g. Clean my downloads folder and organize all images into an Images directory)" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-gray-200 focus:border-primary/50 outline-none h-24 resize-none" 
                             />
                             <div className="flex gap-4">
                                <select 
